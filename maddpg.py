@@ -27,6 +27,7 @@ torch.set_printoptions(threshold=np.inf)
 
 class Agent():
     def __init__(self, state_size, full_state_size, action_size, num_agents, num_process, random_seed=0.0):
+        # todo: add name
         self.state_size = state_size
         self.action_size = action_size
         self.num_agents = num_agents
@@ -41,6 +42,7 @@ class Agent():
         self.memory = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE, random_seed)
 
     def act(self, states):
+        # todo: output discrete action
         return [self.agents[i].act(states[i]) for i in range(self.num_agents)]
 
     def step(self, states, actions, rewards, next_states, dones):
@@ -167,6 +169,7 @@ class Agent():
         for i in range(self.num_agents):
             self.agents[i].reset()
 
+    # todo: save Agent().name
     def save_weights(self):
         for i in range(self.num_agents):
             torch.save(self.agents[i].actor_local.state_dict(), 'mode_weights/agent{}_actor_local.pth'.format(i))

@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# todo: modify the class to receive hidden layer
 
 def hidden_init(layer):
     fan_in = layer.weight.data.size()[0]
