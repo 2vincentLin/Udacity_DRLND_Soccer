@@ -3,7 +3,7 @@
 [image1]: https://raw.githubusercontent.com/Unity-Technologies/ml-agents/master/docs/images/soccer.png "Soccer"
 
 
-# Udacity DRLND soccer 
+# Udacity DRLND soccer (Unfinished)
 
 ### Introduction
 

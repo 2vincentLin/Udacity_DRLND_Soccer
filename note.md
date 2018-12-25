@@ -28,3 +28,4 @@ def act(self, state, eps=0.0):
 
 - maddpg.Agent() should have name attribute because it'll have two agents, when saving 
 weights, it'll overwrite each other.
+- Maybe I should put goalie and striker on the same team into one agent.

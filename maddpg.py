@@ -25,15 +25,16 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 torch.set_printoptions(threshold=np.inf)
 
+
 class Agent():
-    def __init__(self, state_size, full_state_size, action_size, num_agents, num_process, random_seed=0.0):
-        # todo: add name
+    def __init__(self, state_size, full_state_size, action_size, num_agents, num_process, name, random_seed=0.0):
         self.state_size = state_size
         self.action_size = action_size
         self.num_agents = num_agents
         self.num_process = num_process
+        self.name = name
         self.full_state_size = full_state_size
-        self.full_action_size = num_agents * action_size
+        self.full_action_size = num_agents
 
         torch.manual_seed(random_seed)
 
@@ -42,7 +43,6 @@ class Agent():
         self.memory = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE, random_seed)
 
     def act(self, states):
-        # todo: output discrete action
         return [self.agents[i].act(states[i]) for i in range(self.num_agents)]
 
     def step(self, states, actions, rewards, next_states, dones):
@@ -69,7 +69,7 @@ class Agent():
         :return: tensor shape (batch size * self.num_agents, action_size)
         '''
         next_states = [states[i::self.num_agents] for i in range(self.num_agents)]
-        target_actions = [self.agents[i].target_act(next_states[i], False) for i in range(self.num_agents)]
+        target_actions = [self.agents[i].target_act(next_states[i]) for i in range(self.num_agents)]
         return torch.cat(target_actions)
 
     def local_act(self, states, i):
@@ -169,35 +169,34 @@ class Agent():
         for i in range(self.num_agents):
             self.agents[i].reset()
 
-    # todo: save Agent().name
     def save_weights(self):
         for i in range(self.num_agents):
-            torch.save(self.agents[i].actor_local.state_dict(), 'mode_weights/agent{}_actor_local.pth'.format(i))
-            torch.save(self.agents[i].critic_local.state_dict(), 'mode_weights/agent{}_critic_local.pth'.format(i))
-            torch.save(self.agents[i].actor_target.state_dict(), 'mode_weights/agent{}_actor_target.pth'.format(i))
-            torch.save(self.agents[i].critic_target.state_dict(), 'mode_weights/agent{}_critic_target.pth'.format(i))
+            torch.save(self.agents[i].actor_local.state_dict(), 'model_weights/{}_agent{}_actor_local.pth'.format(self.name, i))
+            torch.save(self.agents[i].critic_local.state_dict(), 'model_weights/{}_agent{}_critic_local.pth'.format(self.name, i))
+            torch.save(self.agents[i].actor_target.state_dict(), 'model_weights/{}_agent{}_actor_target.pth'.format(self.name, i))
+            torch.save(self.agents[i].critic_target.state_dict(), 'model_weights/{}_agent{}_critic_target.pth'.format(self.name, i))
 
     def load_weights(self):
         if torch.cuda.is_available():
             for i in range(self.num_agents):
                 self.agents[i].actor_local.load_state_dict(
-                    torch.load('mode_weights/agent{}_actor_local.pth'.format(i)))
+                    torch.load('model_weights/{}_agent{}_actor_local.pth'.format(self.name, i)))
                 self.agents[i].critic_local.load_state_dict(
-                    torch.load('mode_weights/agent{}_critic_local.pth'.format(i)))
+                    torch.load('model_weights/{}_agent{}_critic_local.pth'.format(self.name, i)))
                 self.agents[i].actor_target.load_state_dict(
-                    torch.load('mode_weights/agent{}_actor_target.pth'.format(i)))
+                    torch.load('model_weights/{}_agent{}_actor_target.pth'.format(self.name, i)))
                 self.agents[i].critic_target.load_state_dict(
-                    torch.load('mode_weights/agent{}_critic_target.pth'.format(i)))
+                    torch.load('model_weights/{}_agent{}_critic_target.pth'.format(self.name, i)))
         else:
             for i in range(self.num_agents):
                 self.agents[i].actor_local.load_state_dict(
-                    torch.load('mode_weights/agent{}_actor_local.pth'.format(i), map_location='cpu'))
+                    torch.load('{}_mode_weights/agent{}_actor_local.pth'.format(self.name, i), map_location='cpu'))
                 self.agents[i].critic_local.load_state_dict(
-                    torch.load('mode_weights/agent{}_critic_local.pth'.format(i), map_location='cpu'))
+                    torch.load('{}_mode_weights/agent{}_critic_local.pth'.format(self.name, i), map_location='cpu'))
                 self.agents[i].actor_target.load_state_dict(
-                    torch.load('mode_weights/agent{}_actor_target.pth'.format(i), map_location='cpu'))
+                    torch.load('{}_mode_weights/agent{}_actor_target.pth'.format(self.name, i), map_location='cpu'))
                 self.agents[i].critic_target.load_state_dict(
-                    torch.load('mode_weights/agent{}_critic_target.pth'.format(i), map_location='cpu'))
+                    torch.load('{}_mode_weights/agent{}_critic_target.pth'.format(self.name, i), map_location='cpu'))
 
 
 class base_agent():
@@ -230,26 +229,24 @@ class base_agent():
         # Noise process
         self.noise = OUNoise(action_size, random_seed)
 
-    def act(self, state, add_noise=True):
+    def act(self, state):
         """Returns actions for given state as per current policy."""
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         self.actor_local.eval()
         with torch.no_grad():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
-        if add_noise:
-            action += self.noise.sample()
-        return np.clip(action, -1, 1)[0]
 
-    def target_act(self, state, add_noise=True):
+        return np.argmax(action)
+
+    def target_act(self, state):
         """Returns actions for given state as per current policy."""
         self.actor_target.eval()
         with torch.no_grad():
             action = self.actor_target(state)
         self.actor_target.train()
-        if add_noise:
-            action += self.noise.sample()
-        return action
+
+        return np.argmax(action)
 
     def reset(self):
         self.noise.reset()
